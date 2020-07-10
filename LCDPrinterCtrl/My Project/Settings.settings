@@ -1,0 +1,135 @@
+﻿<?xml version='1.0' encoding='utf-8'?>
+<SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="My" GeneratedClassName="MySettings" UseMySettingsClassName="true">
+  <Profiles />
+  <Settings>
+    <Setting Name="TPG_CodeBefore1" Type="System.String" Scope="User">
+      <Value Profile="(Default)">G91
+G1 Z1 F100
+G1 Z4 F300
+G1 Z-3.5 F300
+G1 Z-1 F75
+G1 Z-0.45 F50
+%Sleep 3700
+M3 S1000
+%Sleep 300</Value>
+    </Setting>
+    <Setting Name="TPG_CodeBefore2" Type="System.String" Scope="User">
+      <Value Profile="(Default)">G91
+G1 Z1 F100
+G1 Z4 F300
+G1 Z-3.5 F300
+G1 Z-1 F75
+G1 Z-0.45 F50
+%Sleep 3700
+M3 S1000
+%Sleep 300</Value>
+    </Setting>
+    <Setting Name="TPG_CodeAfter1" Type="System.String" Scope="User">
+      <Value Profile="(Default)">M5
+%Sleep 1000</Value>
+    </Setting>
+    <Setting Name="TPG_CodeAfter2" Type="System.String" Scope="User">
+      <Value Profile="(Default)">M5
+%Sleep 1000</Value>
+    </Setting>
+    <Setting Name="TPG_loc" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="TPG_t1" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">6500</Value>
+    </Setting>
+    <Setting Name="TPG_t2" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">500</Value>
+    </Setting>
+    <Setting Name="TPG_t3" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">500</Value>
+    </Setting>
+    <Setting Name="TPG_l1" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">3</Value>
+    </Setting>
+    <Setting Name="TPG_l2" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
+    <Setting Name="Machine_Baudrate" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">115200</Value>
+    </Setting>
+    <Setting Name="Last_Open_File" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="Last_Save_File" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="Last_Import_File" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="TerminalInput" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="TP_PatternW" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">3</Value>
+    </Setting>
+    <Setting Name="TP_PatternDistance" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">6</Value>
+    </Setting>
+    <Setting Name="TP_EdgeDistanceW" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">12</Value>
+    </Setting>
+    <Setting Name="TP_Width" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">120.96</Value>
+    </Setting>
+    <Setting Name="TP_Height" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">68.04</Value>
+    </Setting>
+    <Setting Name="TP_LayerThickness" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">0.05</Value>
+    </Setting>
+    <Setting Name="TP_TotalThickness" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">1</Value>
+    </Setting>
+    <Setting Name="TP_TimeMin" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">100</Value>
+    </Setting>
+    <Setting Name="TP_TimeIntv" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">100</Value>
+    </Setting>
+    <Setting Name="TP_FeedRateUp" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">100</Value>
+    </Setting>
+    <Setting Name="TP_FeedRateDown" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">300</Value>
+    </Setting>
+    <Setting Name="TP_LiftDistance" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">2.5</Value>
+    </Setting>
+    <Setting Name="TPG_FinalGCode" Type="System.String" Scope="User">
+      <Value Profile="(Default)">M5
+G1 Z1 F100
+G1 Z39 F300</Value>
+    </Setting>
+    <Setting Name="TPG_StartGCode" Type="System.String" Scope="User">
+      <Value Profile="(Default)">$X
+G91</Value>
+    </Setting>
+    <Setting Name="Lining" Type="System.String" Scope="User">
+      <Value Profile="(Default)" />
+    </Setting>
+    <Setting Name="TP_DisplayWidth" Type="System.String" Scope="User">
+      <Value Profile="(Default)">1920</Value>
+    </Setting>
+    <Setting Name="TP_DisplayHeight" Type="System.String" Scope="User">
+      <Value Profile="(Default)">1080</Value>
+    </Setting>
+    <Setting Name="TP_FastLayerTime" Type="System.String" Scope="User">
+      <Value Profile="(Default)">45000,30000,20000,10000,7000,6500</Value>
+    </Setting>
+    <Setting Name="TPG_OSlicWidth" Type="System.String" Scope="User">
+      <Value Profile="(Default)">30</Value>
+    </Setting>
+    <Setting Name="TP_EdgeDistanceH" Type="System.Double" Scope="User">
+      <Value Profile="(Default)">6</Value>
+    </Setting>
+    <Setting Name="TP_PatternH" Type="System.String" Scope="User">
+      <Value Profile="(Default)">3</Value>
+    </Setting>
+  </Settings>
+</SettingsFile>

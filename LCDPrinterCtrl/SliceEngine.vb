@@ -139,6 +139,7 @@ Public Class STL
         Else
             Return False
         End If
+        Return Nothing
     End Function
 
     Public Sub FixNormal()
@@ -705,13 +706,26 @@ Public Class Polygon3DF
 
 #Region "Code from CreationWorkshop"
     'From CW Code
+    Public Mirror As Boolean = False
     Public Sub RenderSlice(ByRef bmp As Bitmap, pColor As Color, ByVal imgSize As Size, ByVal ScrSize As SizeF, Optional ByVal OutlineOnly As Boolean = False, Optional ByVal Offset As Double = 0, Optional ByVal pColorOutLine As Color = Nothing)
         If Line Is Nothing Then Exit Sub
+        Dim timestart As Date = Now
+
         If pColorOutLine.ToArgb = 0 Then pColorOutLine = pColor
+
+        'Dim gd As BitmapData = bmp.LockBits(New Rectangle(New Point, bmp.Size), ImageLockMode.ReadOnly, PixelFormat.Format8bppIndexed)
+        'Dim imgStride As Integer = gd.Stride
+        'Dim imgData(gd.Stride * gd.Height - 1) As Byte
+        'bmp.UnlockBits(gd)
+
         Dim g As Graphics = Graphics.FromImage(bmp)
-        Dim point1 As New Point
-        Dim point2 As New Point
+
+
         Dim pen1 As New Pen(pColor, 1.0F)
+        If ScrSize.Width * ScrSize.Height < 0 Then
+            Mirror = True
+        End If
+        ScrSize = ImageTools.AbsSize(ScrSize)
         Dim lines As New List(Of Line2D)
         For Each l As Line3DF In Line
             lines.Add(New Line2D(Len2Pixel(New PointF(l.p(0).x, l.p(0).y), ScrSize, imgSize), Len2Pixel(New PointF(l.p(1).x, l.p(1).y), ScrSize, imgSize), l))
@@ -741,133 +755,219 @@ Public Class Polygon3DF
             If l.p1.Y > ymax Then ymax = l.p1.Y
             If l.p2.Y > ymax Then ymax = l.p2.Y
         Next
-        For i As Integer = ymin To ymax - 1
-            Dim list2 As New List(Of Line2D)
-            For Each lined As Line2D In lines
-                If (lined.p1.Y >= i And lined.p2.Y <= i) Or (lined.p2.Y >= i And lined.p1.Y <= i) Or (lined.p2.Y = i And lined.p1.Y = i) Then
-                    list2.Add(lined)
-                End If
-            Next
-            Dim intersectingPoints As New List(Of Point2D)
-            For Each lined As Line2D In list2
-                Dim miny As Integer = Math.Min(lined.p1.Y, lined.p2.Y)
-                If lined.p1.Y = i And lined.p2.Y = i Then
-                    If lined.p1.X < lined.p2.X Then
-                        lined.p1.backfacing = True
-                    Else
-                        lined.p1.backfacing = False
+
+        Dim timepoly As Date = Now
+
+        Parallel.For(ymin, ymax,
+            Sub(i As Integer)
+                Dim point1 As New Point
+                Dim point2 As New Point
+                Dim list2 As New List(Of Line2D)
+                For Each lined As Line2D In lines
+                    If ((lined.p1.Y > i And lined.p2.Y <= i) Or (lined.p2.Y > i And lined.p1.Y <= i) Or (lined.p2.Y = i And lined.p1.Y = i)) Then
+                        list2.Add(lined)
                     End If
-                    lined.p2.backfacing = Not lined.p1.backfacing
-                    intersectingPoints.Add(lined.p1)
-                    intersectingPoints.Add(lined.p2)
-
-                ElseIf lined.p1.Y = i Then
-                    'If lined.p1.Y = miny Then
-                    lined.p1.backfacing = lined.parent.n.x < 0F
-                    intersectingPoints.Add(lined.p1)
-                    'End If
-                ElseIf lined.p2.Y = i Then
-                    'If lined.p2.Y = miny Then
-                    lined.p2.backfacing = lined.parent.n.x < 0F
-                    intersectingPoints.Add(lined.p2)
-                    'End If
-                Else
-                    Dim item As New Point2D
-                    item.Y = i
-                    item.X = (item.Y - lined.p1.Y) / (lined.p2.Y - lined.p1.Y) * (lined.p2.X - lined.p1.X) + lined.p1.X
-                    item.parent = lined.parent
-                    item.backfacing = lined.parent.n.x < 0F
-                    intersectingPoints.Add(item)
-                    intersectingPoints.Add(item)
-                End If
-            Next
-            intersectingPoints.Sort()
-            SortBackfaces(intersectingPoints)
-
-            If False Then
-                'EvenOdd Algorithm
-                If intersectingPoints.Count Mod 2 = 0 Then
-                    For j As Integer = 0 To intersectingPoints.Count - 1 Step 2
-                        Dim pointd As Point2D = intersectingPoints(j)
-                        Dim pointd2 As Point2D = intersectingPoints(j + 1)
-                        point1.X = pointd.X
-                        point1.Y = pointd.Y
-                        point2.X = pointd2.X
-                        point2.Y = pointd2.Y
-                        g.DrawLine(pen1, point1.X, point1.Y, point2.X, point2.Y)
-                    Next
-                Else
-                    'MessageBox.Show("Row y=" & i & "odd points = " & intersectingPoints.Count & "! Model may contain holes.")
-                End If
-            Else
-                'NormalCount Algorithm
-                Dim pointA, pointB As Point2D
-                pointA = Nothing
-                pointB = Nothing
-                Dim num5 As Integer = 0
-                If intersectingPoints.Count <> 0 Then
-                    For k As Integer = 0 To intersectingPoints.Count - 1
-                        If intersectingPoints(k).backfacing Then
-                            If num5 = 0 Then
-                                pointA = intersectingPoints(k)
-                            End If
-                            num5 += 1
+                Next
+                Dim intersectingPoints As New List(Of Point2D)
+                For Each lined As Line2D In list2
+                    Dim miny As Integer = Math.Min(lined.p1.Y, lined.p2.Y)
+                    If lined.p1.Y = i And lined.p2.Y = i Then
+                        If lined.p1.X < lined.p2.X Then
+                            lined.p1.backfacing = True
                         Else
-                            num5 -= 1
-                            If num5 = 0 And pointA IsNot Nothing Then
-                                pointB = intersectingPoints(k)
-                                point1.X = pointA.X
-                                point1.Y = pointA.Y
-                                point2.X = pointB.X
-                                point2.Y = pointB.Y
-                                g.DrawLine(pen1, point1.X, point1.Y, point2.X, point2.Y)
+                            lined.p1.backfacing = False
+                        End If
+                        lined.p2.backfacing = Not lined.p1.backfacing
+                        intersectingPoints.Add(lined.p1)
+                        intersectingPoints.Add(lined.p2)
+
+                    ElseIf lined.p1.Y = i Then
+                        'If lined.p2.Y < i Then Continue For
+                        'If lined.p1.Y = miny Then
+                        lined.p1.backfacing = lined.parent.n.x < 0F
+                        intersectingPoints.Add(lined.p1)
+                        'End If
+                    ElseIf lined.p2.Y = i Then
+                        'If lined.p1.Y < i Then Continue For
+                        'If lined.p2.Y = miny Then
+                        lined.p2.backfacing = lined.parent.n.x < 0F
+                        intersectingPoints.Add(lined.p2)
+                        'End If
+                    Else
+                        Dim item As New Point2D
+                        item.Y = i
+                        If (lined.p2.Y - lined.p1.Y) <> 0 Then
+                            item.X = (item.Y - lined.p1.Y) / (lined.p2.Y - lined.p1.Y) * (lined.p2.X - lined.p1.X) + lined.p1.X
+                        Else
+                            item.X = item.Y - lined.p1.Y + lined.p1.X
+                        End If
+                        item.parent = lined.parent
+                        item.backfacing = lined.parent.n.x < 0F
+                        'intersectingPoints.Add(item)
+                        intersectingPoints.Add(item)
+                    End If
+                Next
+                intersectingPoints.Sort()
+                'SortBackfaces(intersectingPoints)
+                'Dim DebugL2 As String = ""
+                'For Each l As Line2D In list2
+                '    DebugL2 &= l.p1.X & vbTab & l.p1.Y & vbTab & l.p2.X & vbTab & l.p2.Y & vbTab & vbCrLf
+                'Next
+                'Dim debugmsg As String = ""
+                'For Each p As Point2D In intersectingPoints
+                '    debugmsg &= p.X & vbTab & p.Y & vbTab & p.backfacing & vbCrLf
+                'Next
+                'If i = 840 Then
+                '    i = 840
+                'End If
+                If False Then
+                    'EvenOdd Algorithm
+                    If intersectingPoints.Count Mod 2 = 0 Then
+                        For j As Integer = 0 To intersectingPoints.Count - 1 Step 2
+                            Dim pointd As Point2D = intersectingPoints(j)
+                            Dim pointd2 As Point2D = intersectingPoints(j + 1)
+                            point1.X = pointd.X
+                            point1.Y = pointd.Y
+                            point2.X = pointd2.X
+                            point2.Y = pointd2.Y
+                            SyncLock g
+                                g.DrawLine(pen1, ImageTools.InvertPoint(point1.X, imgSize.Width, Mirror), point1.Y, ImageTools.InvertPoint(point2.X, imgSize.Width, Mirror), point2.Y)
+                            End SyncLock
+                        Next
+                    Else
+                        'MessageBox.Show("Row y=" & i & "odd points = " & intersectingPoints.Count & "! Model may contain holes.")
+                    End If
+                Else
+                    'NormalCount Algorithm
+                    Dim pointA, pointB As Point2D
+                    pointA = Nothing
+                    pointB = Nothing
+                    Dim num5 As Integer = 0
+                    If intersectingPoints.Count <> 0 Then
+                        Dim drawmx As Integer = -1
+                        For k As Integer = 0 To intersectingPoints.Count - 1
+                            If intersectingPoints(k).backfacing Then
+                                If num5 = 0 Then
+                                    pointA = intersectingPoints(k)
+                                End If
+                                num5 += 1
+                            Else
+                                num5 -= 1
+                                If num5 = 0 And pointA IsNot Nothing Then
+                                    'If Not pointA.backfacing Then Continue For
+                                    pointB = intersectingPoints(k)
+                                    'point1.X = pointA.X
+                                    'point1.Y = pointA.Y
+                                    'point2.X = pointB.X
+                                    'point2.Y = pointB.Y
+
+                                    Dim x1 As Integer = ImageTools.InvertPoint(pointA.X, imgSize.Width, Mirror)
+                                    Dim x2 As Integer = ImageTools.InvertPoint(pointB.X, imgSize.Width, Mirror)
+                                    'If x1 > x2 Then ImageTools.Swap(x1, x2)
+                                    If x1 < x2 Then
+                                        SyncLock g
+                                            g.DrawLine(pen1, x1, i, x2, i)
+                                            drawmx = x2
+                                        End SyncLock
+                                    ElseIf x1 > x2 Then
+                                        SyncLock g
+                                            g.DrawLine(pen1, x2, i, x1, i)
+                                            drawmx = x1
+                                        End SyncLock
+                                    Else
+                                        If x1 <> drawmx Then
+                                            SyncLock g
+                                                g.DrawLine(pen1, x1, i, x2, i)
+                                                drawmx = x2
+                                            End SyncLock
+                                        End If
+                                    End If
+                                    'For pp As Integer = x1 To x2
+                                    '    imgData(pp + imgStride * point1.Y) = 255
+                                    'Next
+
+                                    pointA = pointB
+                                    pointB = Nothing
+                                    'num5 = 0
+                                End If
+                            End If
+                        Next
+                        If num5 <> 0 Then
+                            If pointA IsNot Nothing Then
+                                pointB = intersectingPoints(intersectingPoints.Count - 1)
+                                'point1.X = pointA.X
+                                'point1.Y = pointA.Y
+                                'point2.X = pointB.X
+                                'point2.Y = pointB.Y
+
+                                Dim x1 As Integer = ImageTools.InvertPoint(pointA.X, imgSize.Width, Mirror)
+                                Dim x2 As Integer = ImageTools.InvertPoint(pointB.X, imgSize.Width, Mirror)
+                                'If x1 > x2 Then ImageTools.Swap(x1, x2)
+                                If x1 <= x2 Then
+                                    SyncLock g
+                                        g.DrawLine(pen1, x1, i, x2, i)
+                                    End SyncLock
+                                Else
+                                    SyncLock g
+                                        g.DrawLine(pen1, x2, i, x1, i)
+                                    End SyncLock
+                                End If
+                                'For pp As Integer = x1 To x2
+                                '    imgData(pp + imgStride * point1.Y) = 255
+                                'Next
                                 pointA = pointB
                                 pointB = Nothing
                             End If
+                            'MessageBox.Show("Row y=" & i & "odd points = " & intersectingPoints.Count & "! Model may contain holes.")
                         End If
-                    Next
-                    If num5 <> 0 Then
-                        If pointA IsNot Nothing Then
-                            pointB = intersectingPoints(intersectingPoints.Count - 1)
-                            point1.X = pointA.X
-                            point1.Y = pointA.Y
-                            point2.X = pointB.X
-                            point2.Y = pointB.Y
-                            g.DrawLine(pen1, point1.X, point1.Y, point2.X, point2.Y)
-                            pointA = pointB
-                            pointB = Nothing
-                        End If
-                        'MessageBox.Show("Row y=" & i & "odd points = " & intersectingPoints.Count & "! Model may contain holes.")
                     End If
                 End If
-            End If
-            If Offset <> 0 Then
-                Dim pen2 As Pen
+            End Sub)
+        Dim timefill As Date = Now
+        'gd = bmp.LockBits(New Rectangle(New Point, bmp.Size), ImageLockMode.ReadWrite, PixelFormat.Format8bppIndexed)
+        'Marshal.Copy(imgData, 0, gd.Scan0, imgData.Length)
+        'bmp.UnlockBits(gd)
 
-                For Each ln As Line2D In list2
+        If Offset <> 0 Then
+            Dim pen2 As Pen
 
-                    Dim dy As Double = -(ln.p2.X - ln.p1.X)
-                    Dim dx As Double = ln.p2.Y - ln.p1.Y
-                    Dim l As Double = (dx ^ 2 + dy ^ 2) ^ 0.5
-                    If l = 0 Then l = 1
-                    dx /= l
-                    dy /= l
-                    dx *= Offset
-                    dy *= Offset
-                    dx *= imgSize.Width / ScrSize.Width
-                    dy *= imgSize.Height / ScrSize.Height
-                    Dim ofs As Integer = (dx ^ 2 + dy ^ 2) ^ 0.5
-                    If ofs = 0 Then ofs = Offset * imgSize.Width / ScrSize.Width
-                    If Offset < 0 Then
-                        pen2 = New Pen(Color.Black, ofs)
-                    Else
-                        pen2 = New Pen(pColor, ofs)
-                    End If
-                    g.DrawLine(pen2, ln.p1.X, ln.p1.Y, ln.p2.X, ln.p2.Y)
-                Next
-            End If
-        Next
+            For Each ln As Line2D In lines
+
+                Dim dy As Double = -(ln.p2.X - ln.p1.X)
+                Dim dx As Double = ln.p2.Y - ln.p1.Y
+                Dim l As Double = (dx ^ 2 + dy ^ 2) ^ 0.5
+                If l = 0 Then l = 1
+                dx /= l
+                dy /= l
+                dx *= Offset
+                dy *= Offset
+                dx *= imgSize.Width / Math.Abs(ScrSize.Width)
+                dy *= imgSize.Height / Math.Abs(ScrSize.Height)
+                Dim ofs As Integer = (dx ^ 2 + dy ^ 2) ^ 0.5
+                If ofs = 0 Then ofs = Offset * imgSize.Width / Math.Abs(ScrSize.Width)
+                If Offset < 0 Then
+                    pen2 = New Pen(Color.Black, ofs)
+                Else
+                    pen2 = New Pen(pColor, ofs)
+                End If
+
+                Dim x1 As Integer = ImageTools.InvertPoint(ln.p1.X, imgSize.Width, Mirror)
+                Dim x2 As Integer = ImageTools.InvertPoint(ln.p2.X, imgSize.Width, Mirror)
+                g.DrawLine(pen2, x1, ln.p1.Y, x2, ln.p2.Y)
+            Next
+        End If
+        Dim timeofs As Date = Now
         If pColor.ToArgb <> pColorOutLine.ToArgb Then RenderOutlines(g, lines, pColorOutLine, imgSize, ScrSize, bmp)
+        Dim timeend As Date = Now
+        'MessageBox.Show("Polygon:" & (timepoly - timestart).TotalMilliseconds & vbCrLf &
+        '                "Fill:" & (timefill - timepoly).TotalMilliseconds & vbCrLf &
+        '                "Offset:" & (timeofs - timefill).TotalMilliseconds & vbCrLf &
+        '                "Outline:" & (timeend - timeofs).TotalMilliseconds)
+    End Sub
+
+    Public Sub RenderSliceSMAA(ByRef bmp As Bitmap, pColor As Color, ByVal imgSize As Size, ByVal ScrSize As SizeF, Optional ByVal Offset As Double = 0)
+        If Line Is Nothing Then Exit Sub
+
     End Sub
     Public Sub SortBackfaces(points As List(Of Point2D))
         Dim num2 As Integer
@@ -910,7 +1010,7 @@ Public Class Polygon3DF
                 point1.Y = pointd1.Y
                 point2.X = pointd2.X
                 point2.Y = pointd2.Y
-                g.DrawLine(pen1, point1, point2)
+                g.DrawLine(pen1, ImageTools.InvertPoint(point1, imgSize.Width, Mirror), ImageTools.InvertPoint(point2, imgSize.Width, Mirror))
             Next
             pen1.Dispose()
         Catch ex As Exception
@@ -930,7 +1030,7 @@ Public Class Polygon3DF
                 point1.Y = pointd1.Y
                 point2.X = pointd2.X
                 point2.Y = pointd2.Y
-                g.DrawLine(pen1, point1, point2)
+                g.DrawLine(pen1, ImageTools.InvertPoint(point1, imgSize.Width, Mirror), ImageTools.InvertPoint(point2, imgSize.Width, Mirror))
             Next
             pen1.Dispose()
             If True Then
@@ -954,6 +1054,7 @@ Public Class Polygon3DF
                             'End If
                             If y > 0 Then
                                 If b2((x) * 3 + (y - 1) * Stride) = 0 Then
+                                    Continue For
                                     Boundary = True
                                 End If
                             End If
@@ -964,11 +1065,13 @@ Public Class Polygon3DF
                             'End If
                             If x > 0 Then
                                 If b2((x - 1) * 3 + (y) * Stride) = 0 Then
+                                    Continue For
                                     Boundary = True
                                 End If
                             End If
                             If x < w - 1 Then
                                 If b2((x + 1) * 3 + (y) * Stride) = 0 Then
+                                    Continue For
                                     Boundary = True
                                 End If
                             End If
@@ -979,6 +1082,7 @@ Public Class Polygon3DF
                             'End If
                             If y < h - 1 Then
                                 If b2((x) * 3 + (y + 1) * Stride) = 0 Then
+                                    Continue For
                                     Boundary = True
                                 End If
                             End If
@@ -1361,6 +1465,8 @@ Public Class Line3DF
         If p(0).z = p(1).z Then
             Return Nothing
             'Return p(0)
+        ElseIf (math.Abs(p(1).z - z) < Epsilon And p(0).z < z) Or (math.Abs(p(0).z - z) < Epsilon And p(1).z < z) Then
+            Return Nothing
         Else
             Return p(0) + (p(1) - p(0)) / (p(1).z - p(0).z) * (z - p(0).z)
         End If
@@ -1532,4 +1638,279 @@ Public Class Matrix2
     Public Sub New(p(,) As Double)
         Data = p
     End Sub
+End Class
+Public Class ImageTools
+    Public Shared Function GreyCompressToRGB(ByVal imgsrc As Bitmap) As Bitmap
+        If imgsrc Is Nothing Then Return Nothing
+        Dim ParallelOption As New ParallelOptions
+        If My.Settings.EnableParallelProcessing Then
+            ParallelOption.MaxDegreeOfParallelism = Environment.ProcessorCount
+        Else
+            ParallelOption.MaxDegreeOfParallelism = My.Settings.MaximumThreads
+        End If
+        imgsrc = imgsrc.Clone(New Rectangle(New Point(), imgsrc.Size), Imaging.PixelFormat.Format24bppRgb)
+        Dim sz As Size = imgsrc.Size
+        Dim g1 As BitmapData = imgsrc.LockBits(New Rectangle(New Point(), sz), ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb)
+        Dim b1(g1.Stride * sz.Height - 1) As Byte
+        Marshal.Copy(g1.Scan0, b1, 0, b1.Length)
+        Dim imgconv As New Bitmap(sz.Width, (sz.Height + 2) \ 3, Imaging.PixelFormat.Format24bppRgb)
+        Dim g2 As BitmapData = imgconv.LockBits(New Rectangle(New Point(), imgconv.Size), ImageLockMode.ReadWrite, PixelFormat.Format24bppRgb)
+        Dim b2(g2.Stride * imgconv.Height - 1) As Byte
+        Parallel.For(0, (sz.Height + 2) \ 3,
+            Sub(y As Integer)
+                For x As Integer = 0 To sz.Width - 1
+                    b2(y * g2.Stride + x * 3 + 2) = b1((y * 3 + 0) * g1.Stride + x * 3)
+                    If y * 3 + 1 < sz.Height Then b2(y * g2.Stride + x * 3 + 1) = b1((y * 3 + 1) * g1.Stride + x * 3)
+                    If y * 3 + 2 < sz.Height Then b2(y * g2.Stride + x * 3 + 0) = b1((y * 3 + 2) * g1.Stride + x * 3)
+                Next
+            End Sub)
+        'For y As Integer = 0 To (sz.Height + 2) \ 3 - 1
+        'Next
+        Marshal.Copy(b2, 0, g2.Scan0, b2.Length)
+        imgsrc.UnlockBits(g1)
+        imgconv.UnlockBits(g2)
+        Return imgconv
+    End Function
+    Public Shared Function RGBExpandToGrey(ByVal imgsrc As Bitmap, Optional ByVal Height As Integer = 0)
+        If imgsrc Is Nothing Then Return Nothing
+        If Height = 0 Then Height = imgsrc.Height * 3
+        Dim sz As Size = imgsrc.Size
+        Dim g1 As BitmapData = imgsrc.LockBits(New Rectangle(New Point(), sz), ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb)
+        Dim b1(g1.Stride * sz.Height - 1) As Byte
+        Marshal.Copy(g1.Scan0, b1, 0, b1.Length)
+        Dim imgconv As New Bitmap(sz.Width, Height, Imaging.PixelFormat.Format24bppRgb)
+        Dim g2 As BitmapData = imgconv.LockBits(New Rectangle(New Point(), imgconv.Size), ImageLockMode.ReadWrite, PixelFormat.Format24bppRgb)
+        Dim b2(g2.Stride * imgconv.Height - 1) As Byte
+        Parallel.For(0, sz.Height,
+            Sub(y As Integer)
+                For x As Integer = 0 To sz.Width - 1
+                    If y * 3 + 0 < Height Then
+                        b2((y * 3 + 0) * g2.Stride + x * 3 + 0) = b1(y * g1.Stride + x * 3 + 2)
+                        b2((y * 3 + 0) * g2.Stride + x * 3 + 1) = b1(y * g1.Stride + x * 3 + 2)
+                        b2((y * 3 + 0) * g2.Stride + x * 3 + 2) = b1(y * g1.Stride + x * 3 + 2)
+                    End If
+                    If y * 3 + 1 < Height Then
+                        b2((y * 3 + 1) * g2.Stride + x * 3 + 0) = b1(y * g1.Stride + x * 3 + 1)
+                        b2((y * 3 + 1) * g2.Stride + x * 3 + 1) = b1(y * g1.Stride + x * 3 + 1)
+                        b2((y * 3 + 1) * g2.Stride + x * 3 + 2) = b1(y * g1.Stride + x * 3 + 1)
+                    End If
+                    If y * 3 + 2 < Height Then
+                        b2((y * 3 + 2) * g2.Stride + x * 3 + 0) = b1(y * g1.Stride + x * 3 + 0)
+                        b2((y * 3 + 2) * g2.Stride + x * 3 + 1) = b1(y * g1.Stride + x * 3 + 0)
+                        b2((y * 3 + 2) * g2.Stride + x * 3 + 2) = b1(y * g1.Stride + x * 3 + 0)
+                    End If
+                Next
+            End Sub)
+        'For y As Integer = 0 To (sz.Height + 2) \ 3 - 1
+        'Next
+        Marshal.Copy(b2, 0, g2.Scan0, b2.Length)
+        imgsrc.UnlockBits(g1)
+        imgconv.UnlockBits(g2)
+        Return imgconv
+    End Function
+    Public Shared Function GetUncompressedImage(img As Bitmap, Optional ByVal Height As Integer = 0) As Bitmap
+        If My.Settings.GreyThroughRGB Then
+            Return ImageTools.RGBExpandToGrey(img, Height)
+        Else
+            Return img
+        End If
+    End Function
+    Public Shared Function GetImageToBeStored(img As Bitmap) As Bitmap
+        If My.Settings.GreyThroughRGB Then
+            Return ImageTools.GreyCompressToRGB(img)
+        Else
+            Return img
+        End If
+    End Function
+    Public Shared Sub Swap(ByRef a As Long, ByRef b As Long)
+        Dim t As Long = a
+        a = b
+        b = t
+    End Sub
+    Public Shared Sub Swap(ByRef a As Integer, ByRef b As Integer)
+        Dim t As Integer = a
+        a = b
+        b = t
+    End Sub
+    Public Shared Function IsValidPoint(p As Point, sz As Size) As Boolean
+        If p.X < 0 Or p.Y < 0 Then Return False
+        If p.X > sz.Width - 1 Or p.Y > sz.Height - 1 Then Return False
+        Return True
+    End Function
+    Public Shared Function WSortMap(source As Byte(,), EdgeA As Long, EdgeB As Long, TargetA As Long, TargetB As Long) As Integer(,)
+        If EdgeA > EdgeB Then Swap(EdgeA, EdgeB)
+        If TargetA > TargetB Then Swap(TargetA, TargetB)
+        Dim dir() As Point = {New Point(-1, -1), New Point(-1, 0), New Point(-1, 1), New Point(0, -1), New Point(0, 1), New Point(1, -1), New Point(1, 0), New Point(1, 1)}
+        'Dim dir() As Point = {New Point(-1, 0), New Point(0, -1), New Point(0, 1), New Point(1, 0)}
+
+        Dim sz As Size = New Size(source.GetLength(0), source.GetLength(1))
+        Dim Result(sz.Width - 1, sz.Height - 1) As Integer
+        Dim q(sz.Width * sz.Height - 1) As Point
+        Dim qs As Integer = 0, qe As Integer = -1
+        Dim l As Integer = 1
+        Parallel.For(0, sz.Height,
+            Sub(y As Integer)
+                For x As Integer = 0 To sz.Width - 1
+                    If source(x, y) >= EdgeA And source(x, y) <= EdgeB Then
+                        Dim qe2 As Integer = Threading.Interlocked.Increment(qe)
+                        SyncLock q
+                            If q.Length - 1 < qe2 Then ReDim Preserve q(qe2)
+                        End SyncLock
+                        q(qe2) = New Point(x, y)
+                        Result(x, y) = l
+                    End If
+                Next
+            End Sub)
+
+        While qs <= qe
+            l += 1
+            Dim qe0 As Integer = qe
+            Parallel.For(qs, qe + 1,
+                Sub(k As Integer)
+                    For Each ofs As Point In dir
+                        Dim p2 As Point = q(k) + ofs
+                        If IsValidPoint(p2, sz) Then
+                            If Threading.Interlocked.CompareExchange(Result(p2.X, p2.Y), l, 0) = 0 Then
+                                Dim qe2 As Integer = Threading.Interlocked.Increment(qe)
+                                SyncLock q
+                                    If q.Length - 1 < qe2 Then ReDim Preserve q(qe2)
+                                End SyncLock
+                                q(qe2) = p2
+                                Result(p2.X, p2.Y) = l
+                            End If
+                        End If
+                    Next
+                End Sub)
+            qs = qe0 + 1
+        End While
+        Parallel.For(0, sz.Height,
+            Sub(y As Integer)
+                For x As Integer = 0 To sz.Width - 1
+                    If Result(x, y) > 0 Then Result(x, y) -= 1
+                Next
+            End Sub)
+        Return Result
+    End Function
+    Public Shared Function WSortMap(source As Bitmap, EdgeA As Long, EdgeB As Long, TargetA As Long, TargetB As Long) As Integer(,)
+        Return WSortMap(ImageToByte(source), EdgeA, EdgeB, TargetA, TargetB)
+    End Function
+
+    Public Shared Function WSDepthMap(source As Byte(,), EdgeA As Long, EdgeB As Long, TargetA As Long, TargetB As Long) As Integer(,)
+        Dim Result(,) As Integer = WSortMap(source, EdgeA, EdgeB, TargetA, TargetB)
+        Dim ChgFlag As Boolean = False
+        Dim sz As Size = New Size(source.GetLength(0), source.GetLength(1))
+        Dim dir() As Point = {New Point(-1, -1), New Point(-1, 0), New Point(-1, 1), New Point(0, -1), New Point(0, 1), New Point(1, -1), New Point(1, 0), New Point(1, 1)}
+        'Dim dir() As Point = {New Point(-1, 0), New Point(0, -1), New Point(0, 1), New Point(1, 0)}
+        Do
+            ChgFlag = False
+            For y As Integer = 0 To sz.Height - 1 Step 2
+                For x As Integer = 0 To sz.Width - 1
+                    For Each vec As Point In dir
+                        Dim p2 As Point = New Point(x, y) + vec
+                        If IsValidPoint(p2, sz) Then
+                            If Result(p2.X, p2.Y) <> 0 And Result(x, y) <> 0 Then
+                                If Result(p2.X, p2.Y) <> Result(x, y) Then
+                                    ChgFlag = True
+                                    Result(p2.X, p2.Y) = Math.Max(Result(x, y), Result(p2.X, p2.Y))
+                                    Result(x, y) = Math.Max(Result(x, y), Result(p2.X, p2.Y))
+                                End If
+                            End If
+                        End If
+                    Next
+                Next
+            Next
+            If Not ChgFlag Then Exit Do
+            ChgFlag = False
+            For y As Integer = 0 To sz.Height - 1 Step 2
+                For x As Integer = sz.Width - 1 To 0 Step -1
+                    For Each vec As Point In dir
+                        Dim p2 As Point = New Point(x, y) + vec
+                        If IsValidPoint(p2, sz) Then
+                            If Result(p2.X, p2.Y) <> 0 And Result(x, y) <> 0 Then
+                                If Result(p2.X, p2.Y) <> Result(x, y) Then
+                                    ChgFlag = True
+                                    Result(p2.X, p2.Y) = Math.Max(Result(x, y), Result(p2.X, p2.Y))
+                                    Result(x, y) = Math.Max(Result(x, y), Result(p2.X, p2.Y))
+                                End If
+                            End If
+                        End If
+                    Next
+                Next
+            Next
+            If Not ChgFlag Then Exit Do
+            ChgFlag = False
+            For y As Integer = sz.Height - 1 To 0 Step -2
+                For x As Integer = 0 To sz.Width - 1 
+                    For Each vec As Point In dir
+                        Dim p2 As Point = New Point(x, y) + vec
+                        If IsValidPoint(p2, sz) Then
+                            If Result(p2.X, p2.Y) <> 0 And Result(x, y) <> 0 Then
+                                If Result(p2.X, p2.Y) <> Result(x, y) Then
+                                    ChgFlag = True
+                                    Result(p2.X, p2.Y) = Math.Max(Result(x, y), Result(p2.X, p2.Y))
+                                    Result(x, y) = Math.Max(Result(x, y), Result(p2.X, p2.Y))
+                                End If
+                            End If
+                        End If
+                    Next
+                Next
+            Next
+            If Not ChgFlag Then Exit Do
+            ChgFlag = False
+            For y As Integer = sz.Height - 1 To 0 Step -2
+                For x As Integer = sz.Width - 1 To 0 Step -1
+                    For Each vec As Point In dir
+                        Dim p2 As Point = New Point(x, y) + vec
+                        If IsValidPoint(p2, sz) Then
+                            If Result(p2.X, p2.Y) <> 0 And Result(x, y) <> 0 Then
+                                If Result(p2.X, p2.Y) <> Result(x, y) Then
+                                    ChgFlag = True
+                                    Result(p2.X, p2.Y) = Math.Max(Result(x, y), Result(p2.X, p2.Y))
+                                    Result(x, y) = Math.Max(Result(x, y), Result(p2.X, p2.Y))
+                                End If
+                            End If
+                        End If
+                    Next
+                Next
+            Next
+            ChgFlag = False
+        Loop Until Not ChgFlag
+        Return Result
+    End Function
+    Public Shared Function WSDepthMap(source As Bitmap, EdgeA As Long, EdgeB As Long, TargetA As Long, TargetB As Long) As Integer(,)
+        Return WSDepthMap(ImageToByte(source), EdgeA, EdgeB, TargetA, TargetB)
+    End Function
+
+    Public Shared Function ImageToByte(img As Bitmap) As Byte(,)
+        Dim sz As Size = img.Size
+        Dim Result(sz.Width - 1, sz.Height - 1) As Byte
+        Dim bc As BitmapData = img.LockBits(New Rectangle(New Point, sz), ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb)
+        Dim b(bc.Stride * sz.Height - 1) As Byte
+        Marshal.Copy(bc.Scan0, b, 0, b.Length)
+        img.UnlockBits(bc)
+        Parallel.For(0, sz.Height,
+            Sub(y As Integer)
+                For x As Integer = 0 To sz.Width - 1
+                    Result(x, y) = b(y * bc.Stride + 3 * x)
+                Next
+            End Sub)
+        Return Result
+    End Function
+    Public Shared Function AbsSize(ByVal sz As SizeF) As SizeF
+        Return New SizeF(Math.Abs(sz.Width), Math.Abs(sz.Height))
+    End Function
+    Public Shared Function InvertPoint(orig As Integer, Width As Integer, Optional Invert As Boolean = False) As Integer
+        If Invert Then
+            Return Width - 1 - orig
+        Else
+            Return orig
+        End If
+    End Function
+    Public Shared Function InvertPoint(orig As Point, Width As Integer, Optional Invert As Boolean = False) As Point
+        If Invert Then
+            Return New Point(Width - 1 - orig.X, orig.Y)
+        Else
+            Return orig
+        End If
+    End Function
 End Class
